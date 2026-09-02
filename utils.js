@@ -23,6 +23,50 @@ function getIntersection(A, B, C, D) {
     return null;
 }
 
+function getRGBA(value){
+    const alpha = Math.abs(value);
+    const R = value < 0 ? 0 : 255;
+    const G = R;
+    const B = value > 0 ? 0 : 255;
+    return "rgba("+R+","+G+","+B+","+alpha+")";
+}
+
+function downloadBrain(network, filename = "network.txt"){
+    const lines = [];
+    lines.push("NEURAL NETWORK");
+    lines.push("==============");
+    lines.push("");
+
+    network.levels.forEach((level, li) => {
+        lines.push("LEVEL " + li);
+        lines.push("  Inputs:  " + level.inputs.length);
+        lines.push("  Outputs: " + level.outputs.length);
+        lines.push("");
+        lines.push("  Biases:");
+        level.biases.forEach((b) => lines.push("    " + b.toFixed(4)));
+        lines.push("");
+        lines.push("  Weights (row=input, col=output):");
+        for(let i = 0; i < level.weights.length; i++){
+            const row = level.weights[i]
+                .map((w) => w.toFixed(4))
+                .join("  ");
+            lines.push("    [" + row + "]");
+        }
+        lines.push("");
+    });
+
+    const text = lines.join("\n");
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
 function polysIntersect(poly1,poly2){
     for(let i =0;i<poly1.length;i++){
         for(let j =0;j<poly2.length;j++){

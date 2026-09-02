@@ -1,7 +1,7 @@
 class NeuralNetwork{
     constructor(neuronCounts){
         this.levels=[];
-        for(let i =0;i<neuronCounts.length;i++){
+        for(let i =0;i<neuronCounts.length-1;i++){
             this.levels.push(new Level(
                 neuronCounts[i],neuronCounts[i+1]
             ));
@@ -17,6 +17,27 @@ class NeuralNetwork{
         }
 
         return outputs;
+    }
+
+    static mutate(network,amount =1){
+        network.levels.forEach(level => {
+            for(let i = 0;i<level.biases.length;i++){
+                level.biases[i]=lerp(
+                    level.biases[i],
+                    Math.random()*2-1,
+                    amount
+                )
+            }
+            for(let i=0;i<level.weights.length;i++){
+                for(let j =0;j<level.weights[i].length;j++){
+                    level.weights[i][j]=lerp(
+                        level.weights[i][j],
+                        Math.random()*2-1,
+                        amount
+                    )
+                }
+            }
+        });
     }
 }
 
