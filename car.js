@@ -17,7 +17,7 @@ class Car{
         if(controlType != "DUMMY"){
             this.sensor = new Sensor(this);
             this.brain = new NeuralNetwork(
-                [this.sensor.raycount,6,4]
+                [this.sensor.raycount,10,4]
             );
 
         }

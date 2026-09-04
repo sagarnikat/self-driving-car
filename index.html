@@ -7,15 +7,19 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="scoreboard"></div>
+    
     <canvas id="carCanvas"></canvas>
+    
     <div id="vecrricalbutons">
         <button onclick="save()">📑</button>
         <button onclick="discard()">🗑️</button>
         <button onclick="downloadBrain(bestcar.brain)">⬇️</button>
     </div>
+    
     <canvas id="networkCanvas"></canvas>
     
-
+    <script src="fitness.js"></script>
     <script src="visualizer.js"></script>
     <script src="network.js"></script>
     <script src="sensor.js"></script>
@@ -23,6 +27,7 @@
     <script src="road.js"></script>
     <script src="controls.js"></script>
     <script src="car.js"></script>
+    <script src="trafficLoader.js"></script>
     <script src="main.js"></script>
 </body>
 </html>

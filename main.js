@@ -1,5 +1,5 @@
 const carCanvas = document.getElementById("carCanvas");
-carCanvas.width= 200;
+carCanvas.width= 240;
 
 const networkCanvas = document.getElementById("networkCanvas");
 networkCanvas.width= 300;
@@ -9,29 +9,82 @@ const networkCtx = networkCanvas.getContext("2d");
 
 const road = new Road(carCanvas.width/2,carCanvas.width*0.9);
 
+let traffic = [];
+
 const n = 100;
-const cars = generateCars(n);
-let bestcar = cars[0];
-if(localStorage.getItem("bestBrain")){
-    for(let i =0;i<cars.length;i++){
-        cars[i].brain=JSON.parse(
-            localStorage.getItem("bestBrain"));
-        if(i!=0){
-            NeuralNetwork.mutate(cars[i].brain,0.1);
+let cars = [];
+let fitnesses = [];
+let bestcar =null;
+
+let currentCarConfig = { mode: "AI", count: n };
+let animStarted = false;
+
+function resetToStart() {
+    for (let i = 0; i < cars.length; i++) {
+        cars[i].x = road.getLaneCenter(1);
+        cars[i].y = 100;
+        cars[i].speed = 0;
+        cars[i].angle = 0;
+        cars[i].damaged = false;
+    }
+    for (let i = 0; i < fitnesses.length; i++) {
+        fitnesses[i] = new Fitness(cars[i], traffic);
+    }
+    bestcar = cars[0];
+}
+
+function startSimulation(selectedCars) {
+    cars = selectedCars;
+    fitnesses = cars.map(car => new Fitness(car, traffic));
+    bestcar = cars[0];
+    if(localStorage.getItem("bestBrain")){
+        for(let i = 0; i < cars.length; i++){
+            if(cars[i].useBrain){
+                cars[i].brain = JSON.parse(localStorage.getItem("bestBrain"));
+                if(i != 0){
+                    NeuralNetwork.mutate(cars[i].brain, 0.1);
+                }
+            }
         }
+    }
+    if (!animStarted) {
+        animStarted = true;
+        animate();
     }
 }
 
-const traffic=[
-    new Car(road.getLaneCenter(1),-100,30,50,"DUMMY",2),
-    new Car(road.getLaneCenter(0),-300,30,50,"DUMMY",2),
-    new Car(road.getLaneCenter(2),-300,30,50,"DUMMY",2),
-    new Car(road.getLaneCenter(0),-500,30,50,"DUMMY",2),
-    new Car(road.getLaneCenter(1),-500,30,50,"DUMMY",2),
-    new Car(road.getLaneCenter(1),-700,30,50,"DUMMY",2),
-    new Car(road.getLaneCenter(2),-700,30,50,"DUMMY",2), 
-]
-animate();
+async function reloadTraffic(choice) {
+    traffic = await loadTraffic(4, choice);
+    resetToStart();
+}
+
+function reloadCars() {
+    startSimulation(generateCars(currentCarConfig));
+}
+
+const controlPanel = createControlPanel(async (choice) => {
+    await reloadTraffic(choice);
+}, (config) => {
+    currentCarConfig = config;
+    reloadCars();
+});
+
+(async function init() {
+    traffic = await loadTraffic(4, "random");
+    startSimulation(generateCars(currentCarConfig));
+})();
+
+// if(localStorage.getItem("bestBrain")){
+//     for(let i =0;i<cars.length;i++){
+//         cars[i].brain=JSON.parse(
+//             localStorage.getItem("bestBrain"));
+//         if(i!=0){
+//             NeuralNetwork.mutate(cars[i].brain,0.1);
+//         }
+//     }
+// }
+
+// animate();
 
 function save(){
     localStorage.setItem("bestBrain",
@@ -42,10 +95,15 @@ function discard(){
     localStorage.removeItem("bestBrain");
 }
 
-function generateCars(N){
-    const cars= [];
-    for(let i = 0 ;i<N;i++){
-        cars.push(new Car(road.getLaneCenter(1),100,30,50,"AI",5));
+function generateCars(config) {
+    const cars = [];
+    if (config.mode === "KEYS") {
+        cars.push(new Car(road.getLaneCenter(1), 100, 30, 50, "KEYS", 5));
+        return cars;
+    }
+    const count = config.count > 0 ? config.count : n;
+    for (let i = 0; i < count; i++) {
+        cars.push(new Car(road.getLaneCenter(1), 100, 30, 50, "AI", 5));
     }
     return cars;
 }
@@ -56,11 +114,15 @@ function animate(time){
     }
     for(let i =0;i<cars.length;i++){
         cars[i].update(road.borders,traffic);
+        for (let j = 0; j < fitnesses.length; j++) {
+            fitnesses[j].update();
+        }
     }
 
-    bestcar=cars.find(
-        c=>c.y==Math.min(...cars.map(c=>c.y))
-    );
+    bestcar = fitnesses.reduce((best, f, i) => {
+        return f.getDistance() > fitnesses[best].getDistance() ? i : best;
+    }, 0);
+    bestcar = cars[bestcar];
 
     carCanvas.height= window.innerHeight;
     networkCanvas.height= window.innerHeight;
@@ -82,6 +144,14 @@ function animate(time){
     bestcar.draw(carCtx,"blue",true);
     
     carCtx.restore();
+
+    const bestFitness = fitnesses.find(f => f.car === bestcar);
+    document.getElementById("scoreboard").innerHTML =
+        `Score: ${bestFitness.calculateScore().toFixed(0)}<br>` +
+        `Speed: ${Math.abs(bestcar.speed).toFixed(1)}<br>` +
+        `Dist: ${bestFitness.getDistance().toFixed(0)}<br>` +
+        `Passed: ${bestFitness.carsPassed}<br>` +
+        `Time: ${bestFitness.getTimeAlive().toFixed(1)}s`;
 
     networkCtx.lineDashOffset=-time/50;
     Visualizer.drawNetwork(networkCtx,bestcar.brain);

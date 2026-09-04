@@ -29,3 +29,14 @@ button:hover{
 #networkCanvas{
     background-color: black;
 }
+
+#scoreboard {
+    position: fixed;
+    left: 10px;
+    top: 100px;
+    color: white;
+    font-family: Arial;
+    font-size: 18px;
+    line-height: 1.6;
+    z-index: 10;
+}
