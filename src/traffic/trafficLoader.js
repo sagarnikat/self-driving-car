@@ -1,4 +1,4 @@
-const TRAFFIC_DIR = "data/traffic";
+const TRAFFIC_DIR = CONFIG.traffic.dataDir;
 
 async function fetchTrafficPattern(patternId) {
     const res = await fetch(`${TRAFFIC_DIR}/traffic_${patternId}.json`);
@@ -6,16 +6,14 @@ async function fetchTrafficPattern(patternId) {
     return res.json();
 }
 
-function randomCars(laneCount, count = 40) {
+function randomCars(laneCount, count = CONFIG.traffic.randomDefaultCount) {
     const cars = [];
     let y = 100;
 
     for (let row = 0; row < count; row++) {
-        y -= 300;
+        y -= CONFIG.traffic.randomRowSpacing;
 
-        // occupied lanes per row: mostly 2 cars, sometimes 1 (leaves ~2 lanes
-        // free most of the time, and ~3 free sometimes for overtaking).
-        const occupied = Math.random() < 0.3 ? 1 : 2;
+        const occupied = Math.random() < CONFIG.traffic.singleCarChance ? 1 : 2;
 
         const lanes = [];
         while (lanes.length < occupied) {
@@ -24,8 +22,7 @@ function randomCars(laneCount, count = 40) {
         }
 
         for (let k = 0; k < lanes.length; k++) {
-            // 10% chance of a faster (speed 3) car, otherwise speed 2.
-            const speed = Math.random() < 0.1 ? 3 : 2;
+            const speed = Math.random() < CONFIG.traffic.fasterCarChance ? CONFIG.traffic.fasterSpeed : CONFIG.traffic.defaultSpeed;
             cars.push({
                 lane: lanes[k],
                 y: y + Math.random() * 80,
@@ -71,30 +68,26 @@ class RandomTrafficCar extends Car {
 
     inView() {
         const root = typeof bestcar !== "undefined" ? bestcar : null;
-        return root && Math.abs(this.y - root.y) < 500;
+        return root && Math.abs(this.y - root.y) < CONFIG.traffic.viewDistance;
     }
 
     update(roadBorders, traffic) {
         const root = typeof bestcar !== "undefined" ? bestcar : null;
         if (!root) return;
 
-        // player moves up (y -> -infinity). A car is passed once the player
-        // has gone above it: traffic.y > player.y. Recycle well behind.
-        if (this.y > root.y + 300) {
-            this.y = root.y - 1800 - Math.random() * 400;
+        if (this.y > root.y + CONFIG.traffic.recycleBehindOffset) {
+            this.y = root.y - CONFIG.traffic.recycleAheadMin - Math.random() * CONFIG.traffic.recycleAheadRandom;
             this.x = road.getLaneCenter(Math.floor(Math.random() * this.laneCount));
-            this.speed = Math.random() < 0.1 ? 3 : 2;
+            this.speed = Math.random() < CONFIG.traffic.fasterCarChance ? CONFIG.traffic.fasterSpeed : CONFIG.traffic.defaultSpeed;
             this.angle = 0;
             this.damaged = false;
             this.polygon = this.#buildPolygon();
             return;
         }
 
-        // only run real physics for cars currently visible; skip sensors/damage
-        // work entirely for those far from the screen.
         if (!this.inView()) return;
 
-        const nearbyTraffic = traffic.filter(c => Math.abs(c.y - this.y) < 300);
+        const nearbyTraffic = traffic.filter(c => Math.abs(c.y - this.y) < CONFIG.traffic.nearbyDistance);
         super.update(roadBorders, nearbyTraffic);
     }
 
@@ -104,7 +97,7 @@ class RandomTrafficCar extends Car {
     }
 }
 
-function makeTrafficCars(data, cars, cull = false, laneCount = 4) {
+function makeTrafficCars(data, cars, cull = false, laneCount = CONFIG.road.laneCount) {
     return cars.map(car => {
         if (cull) {
             return new RandomTrafficCar(
@@ -127,13 +120,13 @@ function makeTrafficCars(data, cars, cull = false, laneCount = 4) {
     });
 }
 
-async function loadTraffic(carLaneCount = 4, choice = "1") {
+async function loadTraffic(carLaneCount = CONFIG.road.laneCount, choice = "1") {
     const trimmed = String(choice || "").trim().toLowerCase();
     let data;
     let cars;
 
     if (trimmed === "random") {
-        data = { laneCount: carLaneCount, carWidth: 30, carHeight: 50 };
+        data = { laneCount: carLaneCount, carWidth: CONFIG.traffic.defaultCarWidth, carHeight: CONFIG.traffic.defaultCarHeight };
         cars = randomCars(carLaneCount);
         return makeTrafficCars(data, cars, true, carLaneCount);
     } else {
@@ -170,7 +163,6 @@ function createControlPanel(onTraffic, onCar) {
         return { r, label };
     };
 
-    // ---- Traffic row ----
     const tr = row("Traffic:");
     const trafficSel = document.createElement("select");
     trafficSel.id = "patternSelect";
@@ -192,7 +184,6 @@ function createControlPanel(onTraffic, onCar) {
     trafficSel.onchange = () => onTraffic(trafficSel.value);
     tr.r.appendChild(trafficSel);
 
-    // ---- Car mode row ----
     const cr = row("Cars:");
     const modeSel = document.createElement("select");
     modeSel.id = "carMode";
@@ -205,7 +196,7 @@ function createControlPanel(onTraffic, onCar) {
     countInput.type = "number";
     countInput.min = "1";
     countInput.max = "500";
-    countInput.value = "100";
+    countInput.value = String(CONFIG.sim.defaultCarCount);
     countInput.style.width = "60px";
     countInput.style.display = "inline-block";
 
@@ -214,7 +205,7 @@ function createControlPanel(onTraffic, onCar) {
 
     const fireCar = () => onCar({
         mode: modeSel.value,
-        count: modeSel.value === "AI" ? Math.max(1, parseInt(countInput.value, 10) || 100) : 1
+        count: modeSel.value === "AI" ? Math.max(1, parseInt(countInput.value, 10) || CONFIG.sim.defaultCarCount) : 1
     });
 
     modeSel.onchange = () => {

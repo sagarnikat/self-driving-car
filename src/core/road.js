@@ -1,13 +1,13 @@
 class Road{
-    constructor(x,width,laneCount =4){
+    constructor(x,width,laneCount = CONFIG.road.laneCount){
         this.x=x;
         this.width=width;
         this.laneCount=laneCount;
-        
+
         this.left=x-width/2;
         this.right=x+width/2;
 
-        const infinity = 1000000;
+        const infinity = CONFIG.road.infinity;
         this.top = -infinity;
         this.bottom = infinity;
 
@@ -37,7 +37,7 @@ class Road{
                 this.right,
                 i/this.laneCount
             );
-            
+
             ctx.setLineDash([20,20]);
             ctx.beginPath();
             ctx.moveTo(x,this.top);
@@ -54,4 +54,3 @@ class Road{
         })
     }
 }
-

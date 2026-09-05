@@ -42,13 +42,13 @@ class Fitness {
 
     calculateScore() {
         const distance = this.getDistance();
-        const passedBonus = this.carsPassed * 200;
+        const passedBonus = this.carsPassed * CONFIG.fitness.passedBonus;
 
         if (this.car.damaged) {
             return distance + passedBonus;
         }
 
         const timeAlive = this.getTimeAlive();
-        return distance + passedBonus + (timeAlive * 10);
+        return distance + passedBonus + (timeAlive * CONFIG.fitness.timeAliveMultiplier);
     }
 }

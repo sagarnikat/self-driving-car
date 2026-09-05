@@ -19,7 +19,7 @@ class NeuralNetwork{
         return outputs;
     }
 
-    static mutate(network,amount =1){
+    static mutate(network,amount = CONFIG.network.mutationAmount){
         network.levels.forEach(level => {
             for(let i = 0;i<level.biases.length;i++){
                 level.biases[i]=lerp(

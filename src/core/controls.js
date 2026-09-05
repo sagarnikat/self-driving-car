@@ -4,7 +4,7 @@ class Controls{
         this.reverse= false;
         this.left= false;
         this.right= false;
-        
+
         switch(type){
             case "KEYS":
                 this.#addKeyBoardListeners();

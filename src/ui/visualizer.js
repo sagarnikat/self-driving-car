@@ -64,7 +64,7 @@ class Visualizer{
             ctx.fillStyle=getRGBA(inputs[i]);
             ctx.fill();
         }
-        
+
         for(let i=0;i<outputs.length;i++){
             const x=Visualizer.#getNodeX(outputs,i,left,right);
             ctx.beginPath();

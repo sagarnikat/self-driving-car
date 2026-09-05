@@ -1,23 +1,24 @@
 class Car{
-    constructor(x,y,width,height,controlType,maxSpeed=3){
+    constructor(x,y,width,height,controlType,maxSpeed=CONFIG.car.maxSpeed){
         this.x =x;
         this.y =y;
         this.width =width;
         this.height =height;
 
         this.speed = 0;
-        this.acceleration = 0.2;
+        this.acceleration = CONFIG.car.acceleration;
         this.maxSpeed = maxSpeed;
-        this.friction = 0.05;
+        this.friction = CONFIG.car.friction;
         this.angle = 0;
         this.damaged = false;
+        this.canRotat = CONFIG.car.canRotate;
 
         this.useBrain = controlType=="AI";
 
         if(controlType != "DUMMY"){
             this.sensor = new Sensor(this);
             this.brain = new NeuralNetwork(
-                [this.sensor.raycount,10,4]
+                [this.sensor.raycount,CONFIG.network.hiddenSize,CONFIG.network.outputSize]
             );
 
         }
@@ -37,8 +38,6 @@ class Car{
             );
 
             const outputs = NeuralNetwork.feedForward(offset,this.brain);
-
-            // console.log(outputs);
 
             if(this.useBrain){
                 this.controls.forward = outputs[0];
@@ -104,18 +103,27 @@ class Car{
             this.speed += this.friction;
         if(Math.abs(this.speed)<this.friction)
             this.speed = 0;
-        
-        if(this.speed!= 0){
-            const flip = this.speed>0?1:-1;
-            if(this.controls.left)
-                this.angle += 0.03*flip;
-            if(this.controls.right)
-                this.angle -= 0.03*flip;
-            
-        }
+
+        this.#handleTurn();
 
         this.x -=Math.sin(this.angle)*this.speed;
         this.y -=Math.cos(this.angle)*this.speed;
+    }
+
+    #handleTurn(){
+        if(this.canRotat && this.speed!= 0){
+            const flip = this.speed>0?1:-1;
+            if(this.controls.left)
+                this.angle += CONFIG.car.turnAngle*flip;
+            if(this.controls.right)
+                this.angle -= CONFIG.car.turnAngle*flip;
+        }
+        else{
+            if(this.controls.left)
+                this.x -= CONFIG.car.lateralSpeed;
+            if(this.controls.right)
+                 this.x += CONFIG.car.lateralSpeed;
+        }
     }
 
     draw(ctx,color,drawsensors = false){
