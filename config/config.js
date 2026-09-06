@@ -32,7 +32,7 @@ const CONFIG = {
 
     sim: {
         defaultCarCount: 100,
-        carCanvasWidth: 240,
+        carCanvasWidth: 200,
         networkCanvasWidth: 300
     },
 

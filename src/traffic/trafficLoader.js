@@ -41,9 +41,9 @@ class RandomTrafficCar extends Car {
         return root && Math.abs(this.y - root.y) < CONFIG.traffic.viewDistance;
     }
 
-    update(roadBorders, traffic) {
+    update(roadBorders, traffic, dt) {
         const nearbyTraffic = traffic.filter(c => Math.abs(c.y - this.y) < CONFIG.traffic.nearbyDistance);
-        super.update(roadBorders, nearbyTraffic);
+        super.update(roadBorders, nearbyTraffic, dt);
     }
 
     draw(ctx, color, drawsensors = false) {

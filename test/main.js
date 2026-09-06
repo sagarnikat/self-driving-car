@@ -14,6 +14,7 @@ let trafficGenerator = null;
 
 let car = null;
 let animStarted = false;
+let last = 0;
 
 function resetToStart() {
     car.x = road.getLaneCenter(CONFIG.car.startLane);
@@ -33,11 +34,19 @@ function setTrafficFromResult(result) {
     setTrafficFromResult(await loadTraffic(CONFIG.road.laneCount, "random"));
     resetToStart();
     animStarted = true;
-    animate();
+    requestAnimationFrame(animate);
 })();
 
 function animate(time) {
-    car.update(road.borders, traffic);
+    let dt = (time - last) / 16.67;
+    if (last === 0 || dt <= 0 || dt > 3) dt = 1;
+    last = time;
+
+    for (let i = 0; i < traffic.length; i++) {
+        traffic[i].update(road.borders, [], dt);
+    }
+
+    car.update(road.borders, traffic, dt);
 
     if (trafficGenerator) {
         trafficGenerator.update(car.y);

@@ -19,6 +19,7 @@ let bestcar =null;
 
 let currentCarConfig = { mode: "AI", count: n };
 let animStarted = false;
+let last = 0;
 
 function resetToStart() {
     for (let i = 0; i < cars.length; i++) {
@@ -51,7 +52,7 @@ function startSimulation(selectedCars) {
     }
     if (!animStarted) {
         animStarted = true;
-        animate();
+        requestAnimationFrame(animate);
     }
 }
 
@@ -138,11 +139,15 @@ function generateCars(config) {
 }
 
 function animate(time){
+    let dt = (time - last) / 16.67;
+    if(last === 0 || dt <= 0 || dt > 3) dt = 1;
+    last = time;
+
     for(let i =0;i<traffic.length;i++){
-        traffic[i].update(road.borders,[]);
+        traffic[i].update(road.borders,[],dt);
     }
     for(let i =0;i<cars.length;i++){
-        cars[i].update(road.borders,traffic);
+        cars[i].update(road.borders,traffic,dt);
         for (let j = 0; j < fitnesses.length; j++) {
             fitnesses[j].update();
         }

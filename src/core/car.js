@@ -25,9 +25,9 @@ class Car{
         this.controls = new Controls(controlType);
     }
 
-    update(roadBoarders,traffic){
+    update(roadBoarders,traffic,dt){
         if(!this.damaged){
-            this.#move();
+            this.#move(dt);
             this.polygon = this.#createPolygon();
             this.damaged=this.#assessDamage(roadBoarders,traffic);
         }
@@ -86,43 +86,43 @@ class Car{
         return points;
     }
 
-    #move(){
+    #move(dt){
         if(this.controls.forward)
-            this.speed +=this.acceleration;
+            this.speed += this.acceleration * dt;
         if(this.controls.reverse)
-            this.speed -=this.acceleration;
+            this.speed -= this.acceleration * dt;
 
         if(this.speed > this.maxSpeed)
-            this.speed =this.maxSpeed;
-        if(this.speed < - this.maxSpeed/2)
-            this.speed=-this.maxSpeed/2;
+            this.speed = this.maxSpeed;
+        if(this.speed < - this.maxSpeed / 2)
+            this.speed = -this.maxSpeed / 2;
 
         if(this.speed > 0)
-            this.speed -= this.friction;
+            this.speed -= this.friction * dt;
         if(this.speed < 0)
-            this.speed += this.friction;
-        if(Math.abs(this.speed)<this.friction)
+            this.speed += this.friction * dt;
+        if(Math.abs(this.speed) < this.friction * dt)
             this.speed = 0;
 
-        this.#handleTurn();
+        this.#handleTurn(dt);
 
-        this.x -=Math.sin(this.angle)*this.speed;
-        this.y -=Math.cos(this.angle)*this.speed;
+        this.x -= Math.sin(this.angle) * this.speed * dt;
+        this.y -= Math.cos(this.angle) * this.speed * dt;
     }
 
-    #handleTurn(){
-        if(this.canRotat && this.speed!= 0){
-            const flip = this.speed>0?1:-1;
+    #handleTurn(dt){
+        if(this.canRotat && this.speed != 0){
+            const flip = this.speed > 0 ? 1 : -1;
             if(this.controls.left)
-                this.angle += CONFIG.car.turnAngle*flip;
+                this.angle += CONFIG.car.turnAngle * flip * dt;
             if(this.controls.right)
-                this.angle -= CONFIG.car.turnAngle*flip;
+                this.angle -= CONFIG.car.turnAngle * flip * dt;
         }
         else{
             if(this.controls.left)
-                this.x -= CONFIG.car.lateralSpeed;
+                this.x -= CONFIG.car.lateralSpeed * dt;
             if(this.controls.right)
-                 this.x += CONFIG.car.lateralSpeed;
+                this.x += CONFIG.car.lateralSpeed * dt;
         }
     }
 
