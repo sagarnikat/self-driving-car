@@ -10,6 +10,7 @@ const networkCtx = networkCanvas.getContext("2d");
 const road = new Road(carCanvas.width/2,carCanvas.width*CONFIG.road.widthFactor);
 
 let traffic = [];
+let trafficGenerator = null;
 
 const n = CONFIG.sim.defaultCarCount;
 let cars = [];
@@ -53,8 +54,13 @@ function startSimulation(selectedCars) {
     }
 }
 
+function setTrafficFromResult(result) {
+    trafficGenerator = result.generator || null;
+    traffic = result.generator ? result.generator.getCars() : (result.cars || []);
+}
+
 async function reloadTraffic(choice) {
-    traffic = await loadTraffic(CONFIG.road.laneCount, choice);
+    setTrafficFromResult(await loadTraffic(CONFIG.road.laneCount, choice));
     resetToStart();
 }
 
@@ -69,8 +75,17 @@ const controlPanel = createControlPanel(async (choice) => {
     reloadCars();
 });
 
+const DEFAULT_CAR_CONFIG = { ...CONFIG.car };
+
+createSettingsPanel(() => {
+    reloadCars();
+}, () => {
+    CONFIG.car = { ...DEFAULT_CAR_CONFIG };
+    reloadCars();
+});
+
 (async function init() {
-    traffic = await loadTraffic(CONFIG.road.laneCount, "random");
+    setTrafficFromResult(await loadTraffic(CONFIG.road.laneCount, "random"));
     startSimulation(generateCars(currentCarConfig));
 })();
 
@@ -111,6 +126,11 @@ function animate(time){
         return f.getDistance() > fitnesses[best].getDistance() ? i : best;
     }, 0);
     bestcar = cars[bestcar];
+
+    if (trafficGenerator) {
+        trafficGenerator.update(bestcar.y);
+        traffic = trafficGenerator.getCars();
+    }
 
     carCanvas.height= window.innerHeight;
     networkCanvas.height= window.innerHeight;

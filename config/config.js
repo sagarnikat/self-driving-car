@@ -43,18 +43,15 @@ const CONFIG = {
 
     traffic: {
         dataDir: "data/traffic",
-        randomDefaultCount: 40,
-        randomRowSpacing: 300,
-        recycleBehindOffset: 300,
-        recycleAheadMin: 1800,
-        recycleAheadRandom: 400,
+        rowSpacing: 300,
+        maxCarsPerRow: 3,
+        initialRows: 10,
+        generateAheadRows: 5,
+        removeBehindOffset: 500,
         viewDistance: 500,
         nearbyDistance: 300,
-        fasterCarChance: 0.1,
-        singleCarChance: 0.3,
         defaultCarWidth: 30,
         defaultCarHeight: 50,
-        defaultSpeed: 2,
-        fasterSpeed: 3
+        defaultSpeed: 2
     }
 };

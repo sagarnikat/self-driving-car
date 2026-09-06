@@ -6,39 +6,9 @@ async function fetchTrafficPattern(patternId) {
     return res.json();
 }
 
-function randomCars(laneCount, count = CONFIG.traffic.randomDefaultCount) {
-    const cars = [];
-    let y = 100;
-
-    for (let row = 0; row < count; row++) {
-        y -= CONFIG.traffic.randomRowSpacing;
-
-        const occupied = Math.random() < CONFIG.traffic.singleCarChance ? 1 : 2;
-
-        const lanes = [];
-        while (lanes.length < occupied) {
-            const lane = Math.floor(Math.random() * laneCount);
-            if (!lanes.includes(lane)) lanes.push(lane);
-        }
-
-        for (let k = 0; k < lanes.length; k++) {
-            const speed = Math.random() < CONFIG.traffic.fasterCarChance ? CONFIG.traffic.fasterSpeed : CONFIG.traffic.defaultSpeed;
-            cars.push({
-                lane: lanes[k],
-                y: y + Math.random() * 80,
-                speed: speed
-            });
-        }
-    }
-
-    return cars;
-}
-
-const trafficCache = {};
-
 class RandomTrafficCar extends Car {
-    constructor(lane, y, width, height, speed, laneCount) {
-        super(lane, y, width, height, "DUMMY", speed);
+    constructor(x, y, width, height, speed, laneCount) {
+        super(x, y, width, height, "DUMMY", speed);
         this.laneCount = laneCount;
         this.polygon = this.#buildPolygon();
     }
@@ -72,21 +42,6 @@ class RandomTrafficCar extends Car {
     }
 
     update(roadBorders, traffic) {
-        const root = typeof bestcar !== "undefined" ? bestcar : null;
-        if (!root) return;
-
-        if (this.y > root.y + CONFIG.traffic.recycleBehindOffset) {
-            this.y = root.y - CONFIG.traffic.recycleAheadMin - Math.random() * CONFIG.traffic.recycleAheadRandom;
-            this.x = road.getLaneCenter(Math.floor(Math.random() * this.laneCount));
-            this.speed = Math.random() < CONFIG.traffic.fasterCarChance ? CONFIG.traffic.fasterSpeed : CONFIG.traffic.defaultSpeed;
-            this.angle = 0;
-            this.damaged = false;
-            this.polygon = this.#buildPolygon();
-            return;
-        }
-
-        if (!this.inView()) return;
-
         const nearbyTraffic = traffic.filter(c => Math.abs(c.y - this.y) < CONFIG.traffic.nearbyDistance);
         super.update(roadBorders, nearbyTraffic);
     }
@@ -96,6 +51,76 @@ class RandomTrafficCar extends Car {
         super.draw(ctx, color, drawsensors);
     }
 }
+
+class TrafficGenerator {
+    constructor(laneCount) {
+        this.laneCount = laneCount;
+        this.cars = [];
+
+        let rowY = CONFIG.car.startY;
+        for (let i = 0; i < CONFIG.traffic.initialRows; i++) {
+            rowY -= CONFIG.traffic.rowSpacing;
+            this.generateRow(rowY);
+        }
+    }
+
+    generateRow(rowY) {
+        const carCount = Math.floor(Math.random() * (CONFIG.traffic.maxCarsPerRow + 1));
+
+        const usedLanes = [];
+        while (usedLanes.length < carCount) {
+            const lane = Math.floor(Math.random() * this.laneCount);
+            if (!usedLanes.includes(lane)) usedLanes.push(lane);
+        }
+
+        for (const lane of usedLanes) {
+            this.cars.push(new RandomTrafficCar(
+                road.getLaneCenter(lane),
+                rowY,
+                CONFIG.traffic.defaultCarWidth,
+                CONFIG.traffic.defaultCarHeight,
+                CONFIG.traffic.defaultSpeed,
+                this.laneCount
+            ));
+        }
+    }
+
+    update(bestCarY) {
+        for (let i = this.cars.length - 1; i >= 0; i--) {
+            if (this.cars[i].y >= bestCarY + CONFIG.traffic.removeBehindOffset) {
+                this.cars.splice(i, 1);
+            }
+        }
+
+        let furthestY = bestCarY;
+        if (this.cars.length > 0) {
+            furthestY = this.cars[0].y;
+            for (const c of this.cars) {
+                if (c.y < furthestY) furthestY = c.y;
+            }
+        }
+
+        while (bestCarY - furthestY < CONFIG.traffic.generateAheadRows * CONFIG.traffic.rowSpacing) {
+            furthestY -= CONFIG.traffic.rowSpacing;
+            this.generateRow(furthestY);
+        }
+    }
+
+    reset() {
+        this.cars = [];
+        let rowY = CONFIG.car.startY;
+        for (let i = 0; i < CONFIG.traffic.initialRows; i++) {
+            rowY -= CONFIG.traffic.rowSpacing;
+            this.generateRow(rowY);
+        }
+    }
+
+    getCars() {
+        return this.cars;
+    }
+}
+
+const trafficCache = {};
 
 function makeTrafficCars(data, cars, cull = false, laneCount = CONFIG.road.laneCount) {
     return cars.map(car => {
@@ -122,27 +147,21 @@ function makeTrafficCars(data, cars, cull = false, laneCount = CONFIG.road.laneC
 
 async function loadTraffic(carLaneCount = CONFIG.road.laneCount, choice = "1") {
     const trimmed = String(choice || "").trim().toLowerCase();
-    let data;
-    let cars;
 
     if (trimmed === "random") {
-        data = { laneCount: carLaneCount, carWidth: CONFIG.traffic.defaultCarWidth, carHeight: CONFIG.traffic.defaultCarHeight };
-        cars = randomCars(carLaneCount);
-        return makeTrafficCars(data, cars, true, carLaneCount);
-    } else {
-        const id = parseInt(trimmed, 10);
-        if (isNaN(id) || id < 1 || id > 5) {
-            console.error(`Invalid pattern '${choice}'`);
-            return [];
-        }
-        if (!trafficCache[id]) {
-            trafficCache[id] = await fetchTrafficPattern(id);
-        }
-        data = trafficCache[id];
-        cars = data.cars;
+        return { generator: new TrafficGenerator(carLaneCount) };
     }
 
-    return makeTrafficCars(data, cars);
+    const id = parseInt(trimmed, 10);
+    if (isNaN(id) || id < 1 || id > 5) {
+        console.error(`Invalid pattern '${choice}'`);
+        return { cars: [] };
+    }
+    if (!trafficCache[id]) {
+        trafficCache[id] = await fetchTrafficPattern(id);
+    }
+    const data = trafficCache[id];
+    return { cars: makeTrafficCars(data, data.cars) };
 }
 
 function createControlPanel(onTraffic, onCar) {
