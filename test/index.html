@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>test</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div id="scoreboard"></div>
+    
+    <canvas id="carCanvas"></canvas>
+    
+    <div id="vecrricalbutons">
+        <button onclick="save()">📑</button>
+        <button onclick="discard()">🗑️</button>
+        <button onclick="downloadBrain(bestcar.brain)">⬇️</button>
+    </div>
+    
+    <canvas id="networkCanvas"></canvas>
+    
+    <script src="../config/config.js"></script>
+    <script src="../src/core/utils.js"></script>
+    <script src="../src/core/controls.js"></script>
+    <script src="../src/core/sensor.js"></script>
+    <script src="../src/core/road.js"></script>
+    <script src="../src/core/car.js"></script>
+    <script src="../src/ai/network.js"></script>
+    <script src="../src/ai/fitness.js"></script>
+    <script src="../src/ai/modelManager.js"></script>
+    <script src="../src/traffic/trafficLoader.js"></script>
+    <script src="../src/ui/visualizer.js"></script>
+    <script src="../src/ui/settings.js"></script>
+    <script src="../src/ui/modelManagerUI.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

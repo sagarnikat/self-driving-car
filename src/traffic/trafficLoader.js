@@ -65,7 +65,8 @@ class TrafficGenerator {
     }
 
     generateRow(rowY) {
-        const carCount = Math.floor(Math.random() * (CONFIG.traffic.maxCarsPerRow + 1));
+        const maxCars = Math.min(CONFIG.traffic.maxCarsPerRow, this.laneCount - 1);
+        const carCount = Math.floor(Math.random() * (maxCars + 1));
 
         const usedLanes = [];
         while (usedLanes.length < carCount) {

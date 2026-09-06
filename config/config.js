@@ -13,7 +13,7 @@ const CONFIG = {
     },
 
     road: {
-        laneCount: 4,
+        laneCount: 3,
         widthFactor: 0.9,
         infinity: 1000000
     },
