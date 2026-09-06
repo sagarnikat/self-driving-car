@@ -30,6 +30,13 @@ const CONFIG = {
         mutationAmount: 0.1
     },
 
+    evolution: {
+        elitismCount: 2,
+        mutationRate: 0.1,
+        seed: 12345,
+        maxDistance: 8000
+    },
+
     sim: {
         defaultCarCount: 100,
         carCanvasWidth: 200,

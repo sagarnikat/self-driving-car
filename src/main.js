@@ -18,8 +18,30 @@ let fitnesses = [];
 let bestcar =null;
 
 let currentCarConfig = { mode: "AI", count: n };
+let currentTrafficChoice = "random";
 let animStarted = false;
 let last = 0;
+
+let evolution = null;
+
+function brainArchitecture() {
+    return [CONFIG.sensor.rayCount, CONFIG.network.hiddenSize, CONFIG.network.outputSize];
+}
+
+function ensurePopulation(count) {
+    if (!evolution || evolution.population.length !== count) {
+        SeededRandom.setSeed(CONFIG.evolution.seed);
+        evolution = new Evolution(brainArchitecture());
+        const savedRaw = localStorage.getItem("bestBrain");
+        if (savedRaw) {
+            const saved = JSON.parse(savedRaw);
+            evolution.seedPopulation(count, NeuralNetwork.fromJSON(saved));
+        } else {
+            evolution.createPopulation(count);
+        }
+    }
+    return evolution.population;
+}
 
 function resetToStart() {
     for (let i = 0; i < cars.length; i++) {
@@ -39,17 +61,6 @@ function startSimulation(selectedCars) {
     cars = selectedCars;
     fitnesses = cars.map(car => new Fitness(car, traffic));
     bestcar = cars[0];
-    if(localStorage.getItem("bestBrain")){
-        const saved = JSON.parse(localStorage.getItem("bestBrain"));
-        for(let i = 0; i < cars.length; i++){
-            if(cars[i].useBrain){
-                cars[i].brain = NeuralNetwork.fromJSON(saved);
-                if(i != 0){
-                    NeuralNetwork.mutate(cars[i].brain, CONFIG.network.mutationAmount);
-                }
-            }
-        }
-    }
     if (!animStarted) {
         animStarted = true;
         requestAnimationFrame(animate);
@@ -65,6 +76,7 @@ let activeModelName = null;
 
 function loadBrain(network) {
     localStorage.setItem("bestBrain", JSON.stringify(network));
+    evolution = null;
     startSimulation(generateCars(currentCarConfig));
 }
 
@@ -87,12 +99,45 @@ function bestModelName() {
 }
 
 async function reloadTraffic(choice) {
+    currentTrafficChoice = choice;
     setTrafficFromResult(await loadTraffic(CONFIG.road.laneCount, choice));
     resetToStart();
 }
 
 function reloadCars() {
     startSimulation(generateCars(currentCarConfig));
+}
+
+function generationFinished() {
+    if (currentCarConfig.mode !== "AI") return false;
+    if (cars.length === 0) return true;
+    if (cars.every(c => c.damaged)) return true;
+
+    const bestFitness = fitnesses.find(f => f.car === bestcar);
+    if (bestFitness && bestFitness.getDistance() >= CONFIG.evolution.maxDistance) {
+        return true;
+    }
+    return false;
+}
+
+let restarting = false;
+
+function endGeneration() {
+    const count = Math.min(evolution.population.length, cars.length);
+    for (let i = 0; i < count; i++) {
+        evolution.setFitness(evolution.population[i], fitnesses[i].calculateScore());
+    }
+    evolution.nextGeneration();
+    restartGeneration();
+}
+
+async function restartGeneration() {
+    try {
+        setTrafficFromResult(await loadTraffic(CONFIG.road.laneCount, currentTrafficChoice));
+    } finally {
+        reloadCars();
+        restarting = false;
+    }
 }
 
 const controlPanel = createControlPanel(async (choice) => {
@@ -121,7 +166,7 @@ createModelManagerUI((brain, name) => {
 });
 
 (async function init() {
-    setTrafficFromResult(await loadTraffic(CONFIG.road.laneCount, "random"));
+    setTrafficFromResult(await loadTraffic(CONFIG.road.laneCount, currentTrafficChoice));
     startSimulation(generateCars(currentCarConfig));
 })();
 
@@ -132,8 +177,11 @@ function generateCars(config) {
         return cars;
     }
     const count = config.count > 0 ? config.count : n;
+    const pop = ensurePopulation(count);
     for (let i = 0; i < count; i++) {
-        cars.push(new Car(road.getLaneCenter(CONFIG.car.startLane), CONFIG.car.startY, CONFIG.car.width, CONFIG.car.height, "AI", CONFIG.car.maxSpeed));
+        const car = new Car(road.getLaneCenter(CONFIG.car.startLane), CONFIG.car.startY, CONFIG.car.width, CONFIG.car.height, "AI", CONFIG.car.maxSpeed);
+        car.brain = NeuralNetwork.fromJSON(pop[i % pop.length].brain.toJSON());
+        cars.push(car);
     }
     return cars;
 }
@@ -185,7 +233,10 @@ function animate(time){
     carCtx.restore();
 
     const bestFitness = fitnesses.find(f => f.car === bestcar);
+    const gen = evolution ? evolution.generation : "-";
+    const genStats = evolution ? evolution.getLog()[evolution.getLog().length - 1] : null;
     document.getElementById("scoreboard").innerHTML =
+        `Gen: ${gen}${genStats ? ` (best ${genStats.best.toFixed(0)})` : ""}<br>` +
         `Score: ${bestFitness.calculateScore().toFixed(0)}<br>` +
         `Speed: ${Math.abs(bestcar.speed).toFixed(1)}<br>` +
         `Dist: ${bestFitness.getDistance().toFixed(0)}<br>` +
@@ -194,5 +245,10 @@ function animate(time){
 
     networkCtx.lineDashOffset=-time/50;
     Visualizer.drawNetwork(networkCtx,bestcar.brain);
+
+    if (generationFinished() && !restarting) {
+        restarting = true;
+        endGeneration();
+    }
     requestAnimationFrame(animate);
 }
