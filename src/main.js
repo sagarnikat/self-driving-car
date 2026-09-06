@@ -39,9 +39,10 @@ function startSimulation(selectedCars) {
     fitnesses = cars.map(car => new Fitness(car, traffic));
     bestcar = cars[0];
     if(localStorage.getItem("bestBrain")){
+        const saved = JSON.parse(localStorage.getItem("bestBrain"));
         for(let i = 0; i < cars.length; i++){
             if(cars[i].useBrain){
-                cars[i].brain = JSON.parse(localStorage.getItem("bestBrain"));
+                cars[i].brain = NeuralNetwork.fromJSON(saved);
                 if(i != 0){
                     NeuralNetwork.mutate(cars[i].brain, CONFIG.network.mutationAmount);
                 }
@@ -57,6 +58,31 @@ function startSimulation(selectedCars) {
 function setTrafficFromResult(result) {
     trafficGenerator = result.generator || null;
     traffic = result.generator ? result.generator.getCars() : (result.cars || []);
+}
+
+let activeModelName = null;
+
+function loadBrain(network) {
+    localStorage.setItem("bestBrain", JSON.stringify(network));
+    startSimulation(generateCars(currentCarConfig));
+}
+
+function save() {
+    if(!bestcar) return;
+    const fitness = fitnesses.find(f => f.car === bestcar) || null;
+    const score = fitness ? fitness.calculateScore() : 0;
+    const name = activeModelName || bestModelName();
+    ModelManager.saveModel(name, bestcar.brain, score);
+    activeModelName = null;
+    alert(`Model "${name}" saved (score ${score.toFixed(0)})!`);
+}
+
+function discard() {
+    localStorage.removeItem("bestBrain");
+}
+
+function bestModelName() {
+    return "model_" + new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
 }
 
 async function reloadTraffic(choice) {
@@ -84,19 +110,19 @@ createSettingsPanel(() => {
     reloadCars();
 });
 
+createModelManagerUI((brain, name) => {
+    activeModelName = name;
+    loadBrain(brain);
+}, (name) => {
+    const fitness = fitnesses.find(f => f.car === bestcar) || null;
+    const score = fitness ? fitness.calculateScore() : 0;
+    ModelManager.saveModel(name, bestcar.brain, score);
+});
+
 (async function init() {
     setTrafficFromResult(await loadTraffic(CONFIG.road.laneCount, "random"));
     startSimulation(generateCars(currentCarConfig));
 })();
-
-function save(){
-    localStorage.setItem("bestBrain",
-        JSON.stringify(bestcar.brain));
-}
-
-function discard(){
-    localStorage.removeItem("bestBrain");
-}
 
 function generateCars(config) {
     const cars = [];

@@ -1,11 +1,38 @@
 class NeuralNetwork{
     constructor(neuronCounts){
         this.levels=[];
+        this.architecture = [...neuronCounts];
         for(let i =0;i<neuronCounts.length-1;i++){
             this.levels.push(new Level(
                 neuronCounts[i],neuronCounts[i+1]
             ));
         }
+    }
+
+    toJSON(){
+        return {
+            architecture: this.architecture,
+            levels: this.levels.map(level => ({
+                inputCount: level.inputs.length,
+                outputCount: level.outputs.length,
+                biases: [...level.biases],
+                weights: level.weights.map(row => [...row])
+            }))
+        };
+    }
+
+    static fromJSON(data){
+        const architecture = data.architecture || data.levels.map(l => l.inputs ? l.inputs.length : 0).concat(
+            data.levels.length ? data.levels[data.levels.length - 1].outputs.length : 0
+        );
+        const nn = new NeuralNetwork(architecture);
+        for(let i = 0; i < data.levels.length; i++){
+            nn.levels[i].biases = [...data.levels[i].biases];
+            for(let j = 0; j < data.levels[i].weights.length; j++){
+                nn.levels[i].weights[j] = [...data.levels[i].weights[j]];
+            }
+        }
+        return nn;
     }
 
     static feedForward(givenInpts,network){

@@ -104,3 +104,137 @@ button:hover{
     gap: 8px;
     justify-content: flex-end;
 }
+
+#modelManagerBtn {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    z-index: 200;
+    font-size: 22px;
+    background: rgba(0,0,0,0.75);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+#modelManagerBtn:hover {
+    background: blue;
+}
+
+#modelManagerOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.5);
+    z-index: 400;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#modelManagerPanel {
+    background: white;
+    border-radius: 10px;
+    padding: 20px 24px;
+    font-family: Arial;
+    min-width: 380px;
+    max-width: 90vw;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+#modelManagerPanel h3 {
+    margin: 0 0 12px 0;
+}
+
+.mm-saveRow {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.mm-saveRow input[type="text"] {
+    flex: 1;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+#mmImportLabel {
+    display: inline-block;
+    margin-bottom: 14px;
+    font-size: 14px;
+    cursor: pointer;
+    background: #eee;
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+#mmImportLabel:hover {
+    background: blue;
+    color: white;
+}
+
+.mmListTitle {
+    font-weight: bold;
+    margin-bottom: 8px;
+    font-size: 15px;
+}
+
+#mmModelList {
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 6px;
+}
+
+.mmEmpty {
+    color: #999;
+    padding: 16px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.mmRow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+}
+.mmRow:last-child {
+    border-bottom: none;
+}
+
+.mmInfo {
+    flex: 1;
+    min-width: 0;
+}
+.mmName {
+    font-weight: bold;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.mmMeta {
+    font-size: 12px;
+    color: #666;
+}
+
+.mmRow button {
+    font-size: 12px;
+    padding: 4px 8px;
+    white-space: nowrap;
+}
+.mmRow .mmLoadBtn {
+    background: #4CAF50;
+    color: white;
+}
+.mmRow .mmExportBtn {
+    background: #eee;
+}
+.mmRow .mmDeleteBtn {
+    background: #f44336;
+    color: white;
+}
