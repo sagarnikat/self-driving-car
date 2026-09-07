@@ -79,6 +79,7 @@ function createModelManagerUI(onLoadModel, onSaveModel) {
             meta.className = "mmMeta";
             meta.textContent =
                 `${model.architecture.join("→")} · ` +
+                (model.generation != null ? `Gen ${model.generation} · ` : "") +
                 `Score ${model.fitness} · ` +
                 new Date(model.savedAt).toLocaleString();
             info.appendChild(name);

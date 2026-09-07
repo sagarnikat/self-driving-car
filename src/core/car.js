@@ -12,6 +12,7 @@ class Car{
         this.angle = 0;
         this.damaged = false;
         this.canRotat = CONFIG.car.canRotate;
+        this.stallTimer = 0;
 
         this.useBrain = controlType=="AI";
 
@@ -30,6 +31,16 @@ class Car{
             this.#move(dt);
             this.polygon = this.#createPolygon();
             this.damaged=this.#assessDamage(roadBoarders,traffic);
+            if(!this.damaged && this.useBrain){
+                if(this.speed <= 0){
+                    this.stallTimer += dt;
+                    if(this.stallTimer >= CONFIG.evolution.stallSeconds * 60){
+                        this.damaged = true;
+                    }
+                }else{
+                    this.stallTimer = 0;
+                }
+            }
         }
         if(this.sensor){
             this.sensor.update(roadBoarders,traffic);

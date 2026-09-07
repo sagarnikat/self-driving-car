@@ -35,7 +35,11 @@ const CONFIG = {
         mutationRate: 0.1,
         seed: 12345,
         maxDistance: 8000,
-        autosaveEvery: 5
+        autosaveEvery: 5,
+        stallSeconds: 5,
+        noPassSeconds: 10,
+        benchmarkEvery: 5,
+        benchmarkSeconds: 30
     },
 
     sim: {

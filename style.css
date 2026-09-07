@@ -58,6 +58,122 @@ button:hover{
     background: blue;
 }
 
+#trainingBtn {
+    position: fixed;
+    top: 82px;
+    right: 10px;
+    z-index: 200;
+    font-size: 22px;
+    background: rgba(0,0,0,0.75);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+#trainingBtn:hover {
+    background: blue;
+}
+
+#trainingOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.5);
+    z-index: 350;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#trainingPanel {
+    background: white;
+    border-radius: 10px;
+    padding: 20px 24px;
+    font-family: Arial;
+    min-width: 240px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+#trainingPanel h3 {
+    margin: 0 0 12px 0;
+}
+
+.trainingState {
+    font-size: 13px;
+    font-weight: bold;
+    text-transform: capitalize;
+    padding: 4px 10px;
+    border-radius: 5px;
+    text-align: center;
+    margin-bottom: 10px;
+}
+.trainingState.running {
+    background: #4CAF50;
+    color: white;
+}
+.trainingState.paused {
+    background: #ff9800;
+    color: white;
+}
+.trainingState.stopped,
+.trainingState.complete {
+    background: #f44336;
+    color: white;
+}
+
+.trainingBtns {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.trainingBtns button {
+    flex: 1;
+    padding: 8px;
+    font-size: 14px;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+}
+.trainingBtns button:disabled {
+    background: #ccc !important;
+    cursor: not-allowed;
+}
+.trainingStartBtn {
+    background: #4CAF50;
+}
+.trainingPauseBtn {
+    background: #ff9800;
+}
+.trainingStopBtn {
+    background: #f44336;
+}
+
+.trainingInputRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin: 8px 0;
+}
+.trainingInputRow label {
+    font-size: 14px;
+}
+.trainingInputRow input[type="number"] {
+    width: 80px;
+    padding: 4px;
+}
+
+.trainingCloseBtn {
+    margin-top: 14px;
+    width: 100%;
+    padding: 8px;
+    background: #eee;
+    color: #333;
+    cursor: pointer;
+}
+
 #settingsOverlay {
     position: fixed;
     top: 0;

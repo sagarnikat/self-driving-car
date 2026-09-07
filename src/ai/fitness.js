@@ -7,6 +7,7 @@ class Fitness {
         this.carsPassed = 0;
         this.counted = new Set();
         this.lastY = car.y;
+        this.noPassTimer = 0;
     }
 
     update() {
@@ -23,10 +24,20 @@ class Fitness {
             if (this.lastY > t.y && currentY <= t.y) {
                 this.carsPassed++;
                 this.counted.add(t);
+                this.noPassTimer = 0;
             }
         }
 
         this.lastY = currentY;
+    }
+
+    checkNoPass(dt) {
+        if (this.car.damaged || !this.car.useBrain) return;
+        if (CONFIG.evolution.noPassSeconds <= 0) return;
+        this.noPassTimer += dt;
+        if (this.noPassTimer >= CONFIG.evolution.noPassSeconds * 60) {
+            this.car.damaged = true;
+        }
     }
 
     getDistance() {

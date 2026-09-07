@@ -52,11 +52,11 @@ whole spec to a coding tool in one prompt — that's what broke things last time
 - [ ] Manual "Save Checkpoint" button + autosave every N generations.
 
 ## Phase 5 — Minimal UI to drive it (spec §13, §16, §17, §40)
-- [ ] A small model list: name, generation, score, "Load" button.
-- [ ] Training controls: Start / Pause / Stop, generations input, population
+- [x] A small model list: name, generation, score, "Load" button.
+- [x] Training controls: Start / Pause / Stop, generations input, population
       input, mutation rate input.
-- [ ] Show current generation + best score live while training.
-- [ ] Skip charts/visualization for now — text numbers are enough at this stage.
+- [x] Show current generation + best score live while training.
+- [x] Skip charts/visualization for now — text numbers are enough at this stage.
 
 ## Phase 6 — Nice-to-haves (only after 1–5 work end to end)
 - [ ] Model comparison view (spec §14)

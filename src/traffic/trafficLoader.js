@@ -1,8 +1,8 @@
 const TRAFFIC_DIR = CONFIG.traffic.dataDir;
 
-async function fetchTrafficPattern(patternId) {
-    const res = await fetch(`${TRAFFIC_DIR}/traffic_${patternId}.json`);
-    if (!res.ok) throw new Error(`Traffic pattern ${patternId} not found`);
+async function fetchTrafficPattern(patternId, laneCount) {
+    const res = await fetch(`${TRAFFIC_DIR}/${laneCount} lane/traffic_${patternId}.json`);
+    if (!res.ok) throw new Error(`Traffic pattern ${patternId} not found for ${laneCount} lanes`);
     return res.json();
 }
 
@@ -158,10 +158,11 @@ async function loadTraffic(carLaneCount = CONFIG.road.laneCount, choice = "1") {
         console.error(`Invalid pattern '${choice}'`);
         return { cars: [] };
     }
-    if (!trafficCache[id]) {
-        trafficCache[id] = await fetchTrafficPattern(id);
+    const cacheKey = `${carLaneCount}:${id}`;
+    if (!trafficCache[cacheKey]) {
+        trafficCache[cacheKey] = await fetchTrafficPattern(id, carLaneCount);
     }
-    const data = trafficCache[id];
+    const data = trafficCache[cacheKey];
     return { cars: makeTrafficCars(data, data.cars) };
 }
 
@@ -203,6 +204,22 @@ function createControlPanel(onTraffic, onCar) {
     trafficSel.value = "random";
     trafficSel.onchange = () => onTraffic(trafficSel.value);
     tr.r.appendChild(trafficSel);
+
+    (async () => {
+        const keep = ["random"];
+        for (const [v] of topts) {
+            if (v === "random") continue;
+            try {
+                await fetchTrafficPattern(v, CONFIG.road.laneCount);
+                keep.push(v);
+            } catch (e) { /* pattern not available for this lane count */ }
+        }
+        for (let i = trafficSel.options.length - 1; i >= 0; i--) {
+            if (!keep.includes(trafficSel.options[i].value)) {
+                trafficSel.remove(i);
+            }
+        }
+    })();
 
     const cr = row("Cars:");
     const modeSel = document.createElement("select");

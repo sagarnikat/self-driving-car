@@ -19,10 +19,23 @@ let bestcar =null;
 
 let currentCarConfig = { mode: "AI", count: n };
 let currentTrafficChoice = "random";
-let animStarted = false;
 let last = 0;
 
 let evolution = null;
+
+let trainingState = "stopped"; // "running" | "paused" | "stopped" | "complete"
+let targetGenerations = 0; // 0 = run forever
+let animFrameId = null;
+let restarting = false;
+
+let benchmarking = false;
+let benchmarkCars = [];
+let benchmarkFitnesses = [];
+let benchmarkTraffic = [];
+let benchmarkStartTime = 0;
+let benchmarkSecondsElapsed = 0;
+let benchmarkGen = 0;
+let benchmarkThenComplete = false;
 
 function brainArchitecture() {
     return [CONFIG.sensor.rayCount, CONFIG.network.hiddenSize, CONFIG.network.outputSize];
@@ -61,10 +74,60 @@ function startSimulation(selectedCars) {
     cars = selectedCars;
     fitnesses = cars.map(car => new Fitness(car, traffic));
     bestcar = cars[0];
-    if (!animStarted) {
-        animStarted = true;
-        requestAnimationFrame(animate);
+}
+
+function startLoop() {
+    if (trainingState === "running" && !animFrameId) {
+        last = 0;
+        animFrameId = requestAnimationFrame(animate);
     }
+}
+
+function pauseTraining() {
+    if (trainingState === "paused") return;
+    trainingState = "paused";
+    if (animFrameId) {
+        cancelAnimationFrame(animFrameId);
+        animFrameId = null;
+    }
+    if (trainingControls) trainingControls.refresh();
+}
+
+function stopTraining() {
+    trainingState = "stopped";
+    if (animFrameId) {
+        cancelAnimationFrame(animFrameId);
+        animFrameId = null;
+    }
+    if (trainingControls) trainingControls.refresh();
+}
+
+function startTraining() {
+    if (trainingState === "running") return;
+    const wasStopped = trainingState === "stopped" || trainingState === "complete";
+    trainingState = "running";
+    if (wasStopped) {
+        evolution = null;
+        restarting = false;
+        reloadCars();
+    }
+    startLoop();
+    if (trainingControls) trainingControls.refresh();
+}
+
+function resumeRunning() {
+    trainingState = "running";
+    startLoop();
+    if (trainingControls) trainingControls.refresh();
+}
+
+function resumeCompletedRun() {
+    trainingState = "running";
+    targetGenerations = 0;
+    restarting = false;
+    reloadCars();
+    startLoop();
+    if (trainingControls) trainingControls.refresh();
 }
 
 function setTrafficFromResult(result) {
@@ -77,7 +140,9 @@ let activeModelName = null;
 function loadBrain(network) {
     localStorage.setItem("bestBrain", JSON.stringify(network));
     evolution = null;
+    restarting = false;
     startSimulation(generateCars(currentCarConfig));
+    resumeRunning();
 }
 
 function save() {
@@ -85,9 +150,10 @@ function save() {
     const fitness = fitnesses.find(f => f.car === bestcar) || null;
     const score = fitness ? fitness.calculateScore() : 0;
     const name = activeModelName || bestModelName();
-    ModelManager.saveModel(name, bestcar.brain, score);
+    const generation = evolution ? evolution.generation : null;
+    ModelManager.saveModel(name, bestcar.brain, score, generation);
     activeModelName = null;
-    alert(`Model "${name}" saved (score ${score.toFixed(0)})!`);
+    alert(`Model "${name}" saved (score ${score.toFixed(0)})${generation != null ? `, Gen ${generation}` : ""}!`);
 }
 
 function discard() {
@@ -120,16 +186,105 @@ function generationFinished() {
     return false;
 }
 
-let restarting = false;
-
 function endGeneration() {
     const count = Math.min(evolution.population.length, cars.length);
     for (let i = 0; i < count; i++) {
         evolution.setFitness(evolution.population[i], fitnesses[i].calculateScore());
     }
+
+    const finishedGen = evolution.generation;
     evolution.nextGeneration();
     autosave();
+
+    if (CONFIG.evolution.benchmarkEvery > 0 &&
+        finishedGen % CONFIG.evolution.benchmarkEvery === 0) {
+        benchmarkThenComplete = targetGenerations > 0 && finishedGen >= targetGenerations;
+        benchmarkGen = finishedGen;
+        startBenchmark();
+        return;
+    }
+
+    if (targetGenerations > 0 && finishedGen >= targetGenerations) {
+        trainingState = "complete";
+        saveExperiment().catch((e) => console.warn("Final save failed:", e));
+        if (trainingControls) trainingControls.refresh();
+        restarting = false;
+        return;
+    }
+
     restartGeneration();
+}
+
+function startBenchmark() {
+    restarting = true;
+    (async () => {
+        const result = await loadTraffic(CONFIG.road.laneCount, "1");
+        const benchmarkTrafficCars = result.generator ? result.generator.getCars() : (result.cars || []);
+        const brains = evolution.population.map(g => g.brain);
+        benchmarkCars = brains.map((brain) => {
+            const car = new Car(
+                road.getLaneCenter(CONFIG.car.startLane),
+                CONFIG.car.startY,
+                CONFIG.car.width,
+                CONFIG.car.height,
+                "AI",
+                CONFIG.car.maxSpeed
+            );
+            car.brain = NeuralNetwork.fromJSON(brain.toJSON());
+            return car;
+        });
+        benchmarkFitnesses = benchmarkCars.map(car => new Fitness(car, benchmarkTrafficCars));
+
+        benchmarkTraffic = benchmarkTrafficCars;
+        benchmarkStartTime = Date.now();
+        benchmarkSecondsElapsed = 0;
+        benchmarking = true;
+
+        traffic = benchmarkTraffic;
+        cars = benchmarkCars;
+        fitnesses = benchmarkFitnesses;
+        trafficGenerator = null;
+        last = 0;
+    })();
+}
+
+function finishBenchmark() {
+    let total = 0;
+    let bestFit = benchmarkFitnesses[0];
+    for (const f of benchmarkFitnesses) {
+        const s = f.calculateScore();
+        total += s;
+        if (s > bestFit.calculateScore()) bestFit = f;
+    }
+
+    const entry = {
+        generation: benchmarkGen,
+        averageScore: Math.round(total / benchmarkFitnesses.length),
+        bestScore: Math.round(bestFit.calculateScore()),
+        bestDistance: Math.round(bestFit.getDistance()),
+        bestCarsPassed: bestFit.carsPassed,
+        bestTimeAlive: parseFloat(bestFit.getTimeAlive().toFixed(1))
+    };
+    BenchmarkStore.addEntry(entry);
+    console.log(`Benchmark Gen ${benchmarkGen}: average ${entry.averageScore} / best ${entry.bestScore}`);
+
+    benchmarking = false;
+    benchmarkCars = [];
+    benchmarkFitnesses = [];
+    benchmarkTraffic = [];
+
+    if (benchmarkThenComplete) {
+        benchmarkThenComplete = false;
+        trainingState = "complete";
+        saveExperiment().catch((e) => console.warn("Final save failed:", e));
+        if (trainingControls) trainingControls.refresh();
+        return;
+    }
+    restartGeneration();
+}
+
+function downloadBenchmarkCSV() {
+    BenchmarkStore.downloadCSV();
 }
 
 function autosave() {
@@ -150,7 +305,8 @@ function buildExperiment() {
             trafficChoice: currentTrafficChoice,
             elitismCount: CONFIG.evolution.elitismCount,
             mutationRate: CONFIG.evolution.mutationRate,
-            maxDistance: CONFIG.evolution.maxDistance
+            maxDistance: CONFIG.evolution.maxDistance,
+            targetGenerations: targetGenerations
         },
         evolution: evolution ? evolution.toJSON() : null
     };
@@ -186,8 +342,10 @@ function resumeExperiment(exp) {
         CONFIG.evolution.elitismCount = exp.config.elitismCount != null ? exp.config.elitismCount : CONFIG.evolution.elitismCount;
         CONFIG.evolution.mutationRate = exp.config.mutationRate != null ? exp.config.mutationRate : CONFIG.evolution.mutationRate;
         CONFIG.evolution.maxDistance = exp.config.maxDistance != null ? exp.config.maxDistance : CONFIG.evolution.maxDistance;
+        targetGenerations = exp.config.targetGenerations || 0;
     }
     syncControlPanel();
+    refreshTrainingControls();
     return true;
 }
 
@@ -196,6 +354,7 @@ function syncControlPanel() {
     if (controlPanel.trafficSelect) controlPanel.trafficSelect.value = currentTrafficChoice;
     if (controlPanel.modeSelect) controlPanel.modeSelect.value = currentCarConfig.mode;
     if (controlPanel.countInput) controlPanel.countInput.value = String(currentCarConfig.count);
+    refreshTrainingControls();
 }
 
 function promptResume(saved, onResume, onStartNew) {
@@ -256,6 +415,50 @@ const controlPanel = createControlPanel(async (choice) => {
     reloadCars();
 });
 
+function applyTrainingConfig(change) {
+    if (change.generations !== undefined) {
+        targetGenerations = Math.max(0, change.generations | 0);
+    }
+    if (change.population !== undefined) {
+        currentCarConfig.count = Math.max(1, Math.min(500, change.population | 0));
+        syncControlPanel();
+    }
+    if (change.mutationRate !== undefined) {
+        CONFIG.evolution.mutationRate = Math.max(0, Math.min(1, change.mutationRate));
+    }
+}
+
+function getTrainingState() {
+    return {
+        state: trainingState,
+        generations: targetGenerations,
+        population: currentCarConfig.count,
+        mutationRate: CONFIG.evolution.mutationRate
+    };
+}
+
+let trainingControls = null;
+
+function setupTrainingControls() {
+    trainingControls = createTrainingControls(
+        () => {
+            if (trainingState === "complete") {
+                resumeCompletedRun();
+            } else {
+                startTraining();
+            }
+        },
+        () => pauseTraining(),
+        () => stopTraining(),
+        applyTrainingConfig,
+        getTrainingState
+    );
+}
+
+function refreshTrainingControls() {
+    if (trainingControls) trainingControls.refresh();
+}
+
 const DEFAULT_CAR_CONFIG = { ...CONFIG.car };
 
 createSettingsPanel(() => {
@@ -265,13 +468,16 @@ createSettingsPanel(() => {
     reloadCars();
 });
 
+setupTrainingControls();
+
 createModelManagerUI((brain, name) => {
     activeModelName = name;
     loadBrain(brain);
 }, (name) => {
     const fitness = fitnesses.find(f => f.car === bestcar) || null;
     const score = fitness ? fitness.calculateScore() : 0;
-    ModelManager.saveModel(name, bestcar.brain, score);
+    const generation = evolution ? evolution.generation : null;
+    ModelManager.saveModel(name, bestcar.brain, score, generation);
 });
 
 (async function init() {
@@ -281,6 +487,7 @@ createModelManagerUI((brain, name) => {
             if (resumeExperiment(saved)) {
                 setTrafficFromResult(await loadTraffic(CONFIG.road.laneCount, currentTrafficChoice));
                 startSimulation(generateCars(currentCarConfig));
+                resumeRunning();
             } else {
                 startDefault();
             }
@@ -295,7 +502,7 @@ createModelManagerUI((brain, name) => {
 
 async function startDefault() {
     setTrafficFromResult(await loadTraffic(CONFIG.road.laneCount, currentTrafficChoice));
-    startSimulation(generateCars(currentCarConfig));
+    startTraining();
 }
 
 function generateCars(config) {
@@ -314,7 +521,16 @@ function generateCars(config) {
     return cars;
 }
 
+function benchmarkAverage() {
+    if (benchmarkFitnesses.length === 0) return 0;
+    let total = 0;
+    for (const f of benchmarkFitnesses) total += f.calculateScore();
+    return total / benchmarkFitnesses.length;
+}
+
 function animate(time){
+    animFrameId = null;
+
     let dt = (time - last) / 16.67;
     if(last === 0 || dt <= 0 || dt > 3) dt = 1;
     last = time;
@@ -326,6 +542,16 @@ function animate(time){
         cars[i].update(road.borders,traffic,dt);
         for (let j = 0; j < fitnesses.length; j++) {
             fitnesses[j].update();
+        }
+        const fit = fitnesses.find(f => f.car === cars[i]);
+        if (fit) fit.checkNoPass(dt);
+    }
+
+    if (benchmarking) {
+        benchmarkSecondsElapsed = (Date.now() - benchmarkStartTime) / 1000;
+        if (benchmarkSecondsElapsed >= CONFIG.evolution.benchmarkSeconds ||
+            cars.length === 0 || cars.every(c => c.damaged)) {
+            finishBenchmark();
         }
     }
 
@@ -363,20 +589,33 @@ function animate(time){
     const bestFitness = fitnesses.find(f => f.car === bestcar);
     const gen = evolution ? evolution.generation : "-";
     const genStats = evolution ? evolution.getLog()[evolution.getLog().length - 1] : null;
-    document.getElementById("scoreboard").innerHTML =
-        `Gen: ${gen}${genStats ? ` (best ${genStats.best.toFixed(0)})` : ""}<br>` +
-        `Score: ${bestFitness.calculateScore().toFixed(0)}<br>` +
-        `Speed: ${Math.abs(bestcar.speed).toFixed(1)}<br>` +
-        `Dist: ${bestFitness.getDistance().toFixed(0)}<br>` +
-        `Passed: ${bestFitness.carsPassed}<br>` +
-        `Time: ${bestFitness.getTimeAlive().toFixed(1)}s`;
+    const bestEver = evolution && evolution.getBestSoFar() ? evolution.getBestSoFar().fitness : null;
+    document.getElementById("scoreboard").innerHTML = benchmarking
+        ? `⏱ Benchmark (traffic_1) — Gen ${benchmarkGen}<br>` +
+          `Timer: ${benchmarkSecondsElapsed.toFixed(1)} / ${CONFIG.evolution.benchmarkSeconds}s<br>` +
+          `Best: ${bestFitness.calculateScore().toFixed(0)}<br>` +
+          `Avg: ${benchmarkAverage().toFixed(0)}<br>` +
+          `Speed: ${Math.abs(bestcar.speed).toFixed(1)}<br>` +
+          `Dist: ${bestFitness.getDistance().toFixed(0)}<br>` +
+          `Passed: ${bestFitness.carsPassed}`
+        : `Gen: ${gen}${targetGenerations > 0 ? ` / ${targetGenerations}` : ""}<br>` +
+          `${genStats ? `Prev best: ${genStats.best.toFixed(0)}<br>` : ""}` +
+          `${bestEver != null ? `Best ever: ${bestEver.toFixed(0)}<br>` : ""}` +
+          `Score: ${bestFitness.calculateScore().toFixed(0)}<br>` +
+          `Speed: ${Math.abs(bestcar.speed).toFixed(1)}<br>` +
+          `Dist: ${bestFitness.getDistance().toFixed(0)}<br>` +
+          `Passed: ${bestFitness.carsPassed}<br>` +
+          `Time: ${bestFitness.getTimeAlive().toFixed(1)}s`;
 
     networkCtx.lineDashOffset=-time/50;
     Visualizer.drawNetwork(networkCtx,bestcar.brain);
 
-    if (generationFinished() && !restarting) {
+    if (!benchmarking && generationFinished() && !restarting) {
         restarting = true;
         endGeneration();
     }
-    requestAnimationFrame(animate);
+
+    if (trainingState === "running") {
+        animFrameId = requestAnimationFrame(animate);
+    }
 }

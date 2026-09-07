@@ -13,7 +13,7 @@ const ModelManager = (() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(models));
     }
 
-    function saveModel(name, brain, fitness){
+    function saveModel(name, brain, fitness, generation){
         const models = getModels();
         const data = brain.toJSON ? brain.toJSON() : brain;
         const existing = models.findIndex(m => m.name === name);
@@ -22,6 +22,7 @@ const ModelManager = (() => {
             architecture: data.architecture,
             brain: data,
             fitness: fitness != null ? Math.round(fitness) : 0,
+            generation: generation != null ? generation : null,
             savedAt: new Date().toISOString()
         };
         if(existing >= 0){
@@ -54,6 +55,7 @@ const ModelManager = (() => {
             name: m.name,
             architecture: m.architecture,
             fitness: m.fitness,
+            generation: m.generation,
             savedAt: m.savedAt
         }));
     }

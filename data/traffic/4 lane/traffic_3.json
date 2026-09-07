@@ -1,0 +1,46 @@
+{
+  "laneCount": 4,
+  "carWidth": 30,
+  "carHeight": 50,
+  "cars": [
+    { "lane": 0, "y": -200,  "speed": 3.2 },
+    { "lane": 1, "y": -200,  "speed": 3.2 },
+    { "lane": 2, "y": -200,  "speed": 3.2 },
+
+    { "lane": 1, "y": -500,  "speed": 3.2 },
+    { "lane": 2, "y": -500,  "speed": 3.2 },
+    { "lane": 3, "y": -500,  "speed": 3.2 },
+
+    { "lane": 0, "y": -800,  "speed": 3.3 },
+    { "lane": 2, "y": -800,  "speed": 3.3 },
+    { "lane": 3, "y": -800,  "speed": 3.3 },
+
+    { "lane": 0, "y": -1100, "speed": 3.3 },
+    { "lane": 1, "y": -1100, "speed": 3.3 },
+    { "lane": 3, "y": -1100, "speed": 3.3 },
+
+    { "lane": 1, "y": -1400, "speed": 3.4 },
+    { "lane": 2, "y": -1400, "speed": 3.4 },
+    { "lane": 3, "y": -1400, "speed": 3.4 },
+
+    { "lane": 0, "y": -1700, "speed": 3.4 },
+    { "lane": 1, "y": -1700, "speed": 3.4 },
+    { "lane": 2, "y": -1700, "speed": 3.4 },
+
+    { "lane": 0, "y": -2000, "speed": 3.5 },
+    { "lane": 2, "y": -2000, "speed": 3.5 },
+    { "lane": 3, "y": -2000, "speed": 3.5 },
+
+    { "lane": 0, "y": -2300, "speed": 3.5 },
+    { "lane": 1, "y": -2300, "speed": 3.5 },
+    { "lane": 3, "y": -2300, "speed": 3.5 },
+
+    { "lane": 1, "y": -2600, "speed": 3.5 },
+    { "lane": 2, "y": -2600, "speed": 3.5 },
+    { "lane": 3, "y": -2600, "speed": 3.5 },
+
+    { "lane": 0, "y": -2900, "speed": 3.6 },
+    { "lane": 1, "y": -2900, "speed": 3.6 },
+    { "lane": 2, "y": -2900, "speed": 3.6 }
+  ]
+}
