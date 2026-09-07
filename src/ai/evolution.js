@@ -39,6 +39,7 @@ class Evolution {
         this.population = [];
         this.log = [];
         this.bestGenome = null;
+        this.bestSoFar = null;
     }
 
     createPopulation(size) {
@@ -78,6 +79,12 @@ class Evolution {
     nextGeneration() {
         const ranked = this.getRanked();
         this.bestGenome = ranked[0];
+
+        if (ranked[0] && (!this.bestSoFar || ranked[0].fitness > this.bestSoFar.fitness)) {
+            const g = new Genome(NeuralNetwork.fromJSON(ranked[0].brain.toJSON()));
+            g.fitness = ranked[0].fitness;
+            this.bestSoFar = g;
+        }
 
         const best = ranked[0] ? ranked[0].fitness : 0;
         const worst = ranked.length ? ranked[ranked.length - 1].fitness : 0;
@@ -132,5 +139,42 @@ class Evolution {
 
     getLog() {
         return this.log.slice();
+    }
+
+    getBestSoFar() {
+        return this.bestSoFar ? { brain: this.bestSoFar.brain, fitness: this.bestSoFar.fitness } : null;
+    }
+
+    toJSON() {
+        return {
+            architecture: this.architecture,
+            generation: this.generation,
+            population: this.population.map(g => ({
+                brain: g.brain.toJSON(),
+                fitness: g.fitness
+            })),
+            log: this.log.slice(),
+            bestSoFar: this.bestSoFar ? {
+                brain: this.bestSoFar.brain.toJSON(),
+                fitness: this.bestSoFar.fitness
+            } : null
+        };
+    }
+
+    static fromJSON(data) {
+        const evo = new Evolution(data.architecture);
+        evo.generation = data.generation || 1;
+        evo.population = (data.population || []).map(p => {
+            const g = new Genome(NeuralNetwork.fromJSON(p.brain));
+            g.fitness = p.fitness || 0;
+            return g;
+        });
+        evo.log = (data.log || []).slice();
+        if (data.bestSoFar) {
+            const g = new Genome(NeuralNetwork.fromJSON(data.bestSoFar.brain));
+            g.fitness = data.bestSoFar.fitness || 0;
+            evo.bestSoFar = g;
+        }
+        return evo;
     }
 }

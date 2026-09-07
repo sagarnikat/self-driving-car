@@ -34,7 +34,8 @@ const CONFIG = {
         elitismCount: 2,
         mutationRate: 0.1,
         seed: 12345,
-        maxDistance: 8000
+        maxDistance: 8000,
+        autosaveEvery: 5
     },
 
     sim: {

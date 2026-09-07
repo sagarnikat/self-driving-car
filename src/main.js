@@ -128,7 +128,116 @@ function endGeneration() {
         evolution.setFitness(evolution.population[i], fitnesses[i].calculateScore());
     }
     evolution.nextGeneration();
+    autosave();
     restartGeneration();
+}
+
+function autosave() {
+    if (CONFIG.evolution.autosaveEvery > 0 &&
+        evolution.generation % CONFIG.evolution.autosaveEvery === 0) {
+        saveExperiment().catch((e) => console.warn("Autosave failed:", e));
+    }
+}
+
+function buildExperiment() {
+    return {
+        type: "experiment",
+        savedAt: new Date().toISOString(),
+        seed: CONFIG.evolution.seed,
+        config: {
+            mode: currentCarConfig.mode,
+            count: currentCarConfig.count,
+            trafficChoice: currentTrafficChoice,
+            elitismCount: CONFIG.evolution.elitismCount,
+            mutationRate: CONFIG.evolution.mutationRate,
+            maxDistance: CONFIG.evolution.maxDistance
+        },
+        evolution: evolution ? evolution.toJSON() : null
+    };
+}
+
+function saveExperiment() {
+    if (!evolution) return Promise.reject(new Error("No experiment running"));
+    return ExperimentStore.save(buildExperiment());
+}
+
+function saveCheckpoint() {
+    saveExperiment().then(() => {
+        const bestFitness = evolution.getBestSoFar();
+        const perf = bestFitness ? bestFitness.fitness.toFixed(0) : "-";
+        alert(`Checkpoint saved (Gen ${evolution.generation}, best so far ${perf}).`);
+    }).catch((e) => {
+        alert("Failed to save checkpoint: " + e.message);
+    });
+}
+
+function resumeExperiment(exp) {
+    if (!exp || !exp.evolution) return false;
+    const seed = exp.seed != null ? exp.seed : CONFIG.evolution.seed;
+    SeededRandom.setSeed(seed);
+    CONFIG.evolution.seed = seed;
+    evolution = Evolution.fromJSON(exp.evolution);
+    if (exp.config) {
+        currentCarConfig = {
+            mode: exp.config.mode || "AI",
+            count: exp.config.count || n
+        };
+        currentTrafficChoice = exp.config.trafficChoice || "random";
+        CONFIG.evolution.elitismCount = exp.config.elitismCount != null ? exp.config.elitismCount : CONFIG.evolution.elitismCount;
+        CONFIG.evolution.mutationRate = exp.config.mutationRate != null ? exp.config.mutationRate : CONFIG.evolution.mutationRate;
+        CONFIG.evolution.maxDistance = exp.config.maxDistance != null ? exp.config.maxDistance : CONFIG.evolution.maxDistance;
+    }
+    syncControlPanel();
+    return true;
+}
+
+function syncControlPanel() {
+    if (!controlPanel) return;
+    if (controlPanel.trafficSelect) controlPanel.trafficSelect.value = currentTrafficChoice;
+    if (controlPanel.modeSelect) controlPanel.modeSelect.value = currentCarConfig.mode;
+    if (controlPanel.countInput) controlPanel.countInput.value = String(currentCarConfig.count);
+}
+
+function promptResume(saved, onResume, onStartNew) {
+    const overlay = document.createElement("div");
+    overlay.id = "resumeOverlay";
+    const panel = document.createElement("div");
+    panel.id = "resumePanel";
+
+    const title = document.createElement("h3");
+    title.textContent = "Saved experiment found";
+
+    const desc = document.createElement("p");
+    const gen = saved.evolution ? saved.evolution.generation : 1;
+    const lastLog = saved.evolution && saved.evolution.log.length
+        ? saved.evolution.log[saved.evolution.log.length - 1]
+        : null;
+    const best = lastLog ? lastLog.best.toFixed(0) : "—";
+    const savedTime = saved.savedAt ? `\nSaved: ${new Date(saved.savedAt).toLocaleString()}` : "";
+    desc.textContent = `Resume training from Gen ${gen}${savedTime}\nLast best score: ${best}`;
+    desc.style.whiteSpace = "pre-line";
+
+    const btns = document.createElement("div");
+    btns.className = "resumeBtns";
+
+    const resumeBtn = document.createElement("button");
+    resumeBtn.className = "resumeBtn";
+    resumeBtn.textContent = "Resume";
+    resumeBtn.addEventListener("click", () => { overlay.remove(); onResume(); });
+
+    const newBtn = document.createElement("button");
+    newBtn.className = "newBtn";
+    newBtn.textContent = "Start new";
+    newBtn.addEventListener("click", () => { overlay.remove(); onStartNew(); });
+
+    btns.appendChild(resumeBtn);
+    btns.appendChild(newBtn);
+    panel.appendChild(title);
+    panel.appendChild(desc);
+    panel.appendChild(btns);
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+    return overlay;
 }
 
 async function restartGeneration() {
@@ -166,9 +275,28 @@ createModelManagerUI((brain, name) => {
 });
 
 (async function init() {
+    const saved = await ExperimentStore.load();
+    if (saved && saved.type === "experiment") {
+        promptResume(saved, async () => {
+            if (resumeExperiment(saved)) {
+                setTrafficFromResult(await loadTraffic(CONFIG.road.laneCount, currentTrafficChoice));
+                startSimulation(generateCars(currentCarConfig));
+            } else {
+                startDefault();
+            }
+        }, () => {
+            ExperimentStore.clear();
+            startDefault();
+        });
+    } else {
+        startDefault();
+    }
+})();
+
+async function startDefault() {
     setTrafficFromResult(await loadTraffic(CONFIG.road.laneCount, currentTrafficChoice));
     startSimulation(generateCars(currentCarConfig));
-})();
+}
 
 function generateCars(config) {
     const cars = [];

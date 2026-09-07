@@ -15,6 +15,7 @@
         <button onclick="save()">📑</button>
         <button onclick="discard()">🗑️</button>
         <button onclick="downloadBrain(bestcar.brain)">⬇️</button>
+        <button onclick="saveCheckpoint()" title="Save checkpoint">📌</button>
     </div>
     
     <canvas id="networkCanvas"></canvas>
@@ -27,6 +28,7 @@
     <script src="src/core/car.js"></script>
     <script src="src/ai/network.js"></script>
     <script src="src/ai/evolution.js"></script>
+    <script src="src/ai/experimentStore.js"></script>
     <script src="src/ai/fitness.js"></script>
     <script src="src/ai/modelManager.js"></script>
     <script src="src/traffic/trafficLoader.js"></script>

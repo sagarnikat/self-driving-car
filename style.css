@@ -238,3 +238,52 @@ button:hover{
     background: #f44336;
     color: white;
 }
+
+#resumeOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.5);
+    z-index: 500;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#resumePanel {
+    background: white;
+    border-radius: 10px;
+    padding: 20px 24px;
+    font-family: Arial;
+    min-width: 320px;
+    max-width: 90vw;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    text-align: center;
+}
+#resumePanel h3 {
+    margin: 0 0 10px 0;
+}
+#resumePanel p {
+    margin: 6px 0 14px 0;
+    font-size: 14px;
+    color: #333;
+}
+.resumeBtns {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+.resumeBtns .resumeBtn {
+    background: #4CAF50;
+    color: white;
+    padding: 8px 16px;
+    font-size: 14px;
+}
+.resumeBtns .newBtn {
+    background: #eee;
+    color: #333;
+    padding: 8px 16px;
+    font-size: 14px;
+}
