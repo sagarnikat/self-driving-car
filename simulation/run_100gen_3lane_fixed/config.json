@@ -1,0 +1,27 @@
+{
+  "generations": 100,
+  "population": 100,
+  "mutation_rate": 0.1,
+  "elitism": 2,
+  "seed": 12345,
+  "lane_count": 3,
+  "max_speed": 7,
+  "train_traffic": "1",
+  "train_traffic_file": "data/traffic/3 lane/traffic_1.json",
+  "test_traffic": "1",
+  "test_traffic_file": "data/traffic/3 lane/traffic_1.json",
+  "benchmark_every": 0,
+  "benchmark_seconds": 30,
+  "max_steps": 0,
+  "end_on_full_pass": true,
+  "full_pass_streak_stop": 5,
+  "no_pass_seconds": 10,
+  "stall_seconds": 5,
+  "jobs": 1,
+  "architecture": [
+    7,
+    10,
+    4
+  ],
+  "note": "Fixed-map training: evolution directly on the test map; generation ends on full overtake, training stops after N consecutive full passes."
+}

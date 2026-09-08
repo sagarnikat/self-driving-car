@@ -11,6 +11,7 @@ import os
 from . import config as C
 from . import rng as rng_mod
 from .car import Car, Road
+from .utils import poly_bounds
 
 
 class RandomTrafficCar(Car):
@@ -18,6 +19,7 @@ class RandomTrafficCar(Car):
         super().__init__(x, y, width, height, "DUMMY", speed)
         self.lane_count = lane_count
         self.polygon = self._create_polygon()
+        self._poly_bounds = poly_bounds(self.polygon)
 
     def update(self, road_borders, traffic, dt=1.0):
         nearby = [c for c in traffic if abs(c.y - self.y) < C.TRAFFIC["nearby_distance"]]
@@ -91,6 +93,7 @@ def make_traffic_cars(data, road, lane_count):
             )
         )
         out[-1].polygon = out[-1]._create_polygon()
+        out[-1]._poly_bounds = poly_bounds(out[-1].polygon)
     return out
 
 

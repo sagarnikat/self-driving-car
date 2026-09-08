@@ -51,3 +51,15 @@ def set_seed(seed):
 
 def seeded_random():
     return _rng()
+
+
+def get_state():
+    """Opaque RNG state for checkpoints/resume."""
+    return {"a": _rng.a}
+
+
+def set_state(state):
+    """Restore RNG state saved with get_state()."""
+    global _rng
+    _rng = Mulberry32(0)
+    _rng.a = int(state["a"]) & MASK32

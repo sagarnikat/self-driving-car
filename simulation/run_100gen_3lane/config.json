@@ -1,0 +1,21 @@
+{
+  "generations": 100,
+  "population": 100,
+  "mutation_rate": 0.1,
+  "elitism": 2,
+  "seed": 12345,
+  "lane_count": 3,
+  "max_speed": 7,
+  "train_traffic": "random",
+  "test_traffic": "1",
+  "test_traffic_file": "data/traffic/3 lane/traffic_1.json",
+  "benchmark_every": 5,
+  "benchmark_seconds": 30.0,
+  "jobs": 4,
+  "architecture": [
+    7,
+    10,
+    4
+  ],
+  "note": "TEST scores never feed back into evolution; best model selected on TRAIN fitness only."
+}
